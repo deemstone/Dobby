@@ -37,3 +37,17 @@ define了哪些模块 [$module, ...]
 定义模块时id必须是文件(../xx/index), 引用的时候可以省略index
 
 还要支持内置模块 require('dom');
+
+
+提供服务
+缓存编译好的文件,只有源文件改动过才重新编译
+.build
+src
+
+wrap的时候自动将当前模块保存到.build对应的.build/im/index.objectjs.wp文件中
+bundle的结果保存到 ./src/im/index.js -> .build/im.js
+模块依赖树保存到 .build/im.js.bl
+任何一个模块被编辑,它的依赖都需要重新计算
+操作逻辑: 
+上一次生成的依赖列表中如果没有任何编辑操作,直接返回bundle的文件;
+如果有任何一个被编辑了, 重新计算依赖, 保存新的依赖树

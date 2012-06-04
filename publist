@@ -1,0 +1,7 @@
+{
+	"prefix": "webpager",
+	"src": "./src",
+	"domains": {
+		"shared": "./lib"
+	}
+}

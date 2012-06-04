@@ -30,7 +30,7 @@ var Resolver = function(cid, file, m, root, sdir, domains){
 		domain = m.substr(0, c);  //域的名字
 		id = m.replace('::', '/'); //path.join(domain, m.substr(c+2));
 		//var root = path.join(  , );
-		ref = path.relative( cwd, id );
+		ref = path.relative( path.dirname(cid), id );
 	}else{
 		src = path.join( path.dirname(file) , m );
 		c = locate(src, 'index.js', 'js');
