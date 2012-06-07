@@ -8,19 +8,31 @@
 var fs = require('fs');
 var path = require('path');
 
-var BuildDIR = '.build';  //编译过程的中间文件存放目录
+//var BuildDIR = '.build';  //编译过程的中间文件存放目录
 
+//把root目录开辟成一块寄存区
 var Register = function(root) {
 	if (!path.existsSync(root)) {
 		throw new Error('Pkg root directory not exist!');
 	}
-	this.dir = path.join(root, BuildDIR);
-	this.root = root;
-	this.checkModify();
+	this.dir = root; //path.join(root, BuildDIR);
 };
 
-Register.prototype.checkModify = function(){
-	
+//设置某个寄存文件的内容
+Register.prototype.replace = function(key, content){
+	var filepath = path.join( this.dir, key);
+	overwrite(filepath, content);
+};
+//取出某个寄存文件的内容
+//@param after{Date()} 在这个时间之后的内容有效
+//@param key{string} 文件绝对路径
+Register.prototype.fetch = function(key, after){
+	after = after ? after.getTime() : 0;
+	var filepath = path.join( this.dir, key);
+	if( path.existsSync(filepath) && (fs.statSync(filepath).mtime.getTime() >= after) ){
+		return fs.readFileSync(filepath, 'utf8');
+	}
+	return null;  //如果文件不存在或者过期
 };
 
 //按照这个路径建立目录
@@ -39,6 +51,7 @@ function mkdirs(dirpath, mode, callback) {
 };
 
 //没有就创建新文件,有就直接覆盖
+//@param filepath{string} 绝对路径
 function overwrite(filepath, content){
 console.log('Overwrite path: ', filepath);
 	mkdirs( path.dirname(filepath) , null, function(dir){
@@ -82,14 +95,6 @@ Register.prototype.regWrapped = function(id, content, wrapper) {
 	var filename = path.dirname(id) + '/' + path.basename( id, '.js');
 	var regpath = path.join( this.dir, filename +'.'+wrapper+'.wp' );
 	overwrite(regpath, content);
-	//mkdirs( path.dirname(regpath) , null, function(dir){
-	//	fs.open(regpath, 'w', function(err, fd){
-	//		if(err){
-	//			throw err;
-	//		}
-	//		fs.writeSync(fd, content, 0);
-	//	});
-	//});
 };
 
 //按entry查询是否有编辑
@@ -99,33 +104,6 @@ Register.prototype.regWrapped = function(id, content, wrapper) {
 Register.prototype.queryBundled = function(id, src, wrapper) {
 	var self = this;
 	//找到.bl文件,加载成为列表
-	var regpath = path.join( this.dir, id+'.'+wrapper );
-	var blpath = path.join( this.dir, path.dirname(id), path.basename(id, '.js') + '.'+wrapper+'.bl' );  //bl文件是跟wrapper无关的
-
-	console.log( 'BL path : ',id, blpath);
-
-	if( !path.existsSync(regpath) || !path.existsSync(blpath) ){
-		return false;
-	}
-	//取出.bl文件的JSON
-	var dmap = JSON.parse( fs.readFileSync(blpath, 'utf8') );
-	//检查每一个依赖的包是否有改动
-	var deps = {};
-	var ismodified = false;  //只要有一个被改动,就modified
-	Object.keys(dmap).forEach(function(id){
-		var wm = self.queryWrapped(id, dmap[id].src, wrapper);
-		if(wm.modified){
-			ismodified = true;
-		}else{
-			deps[id] = wm;
-		}
-	});
-
-	return {
-		deps: deps,
-		modified: ismodified,
-		bundled: regpath
-	};
 };
 
 //暂存bundled输出和依赖列表
