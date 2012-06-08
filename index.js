@@ -22,14 +22,14 @@ var Register = require('./register.js');
 //每个暂存的模块内容必须包含它的依赖列表
 //@param entry{string} 绝对完整路径
 var Bundle = function(entry, options){
+	this.entry = entry;
 	options.srcdir = path.join(options.root, options.src)
 	this.options = options;
-	this.entry = entry;
 	//针对这个pkg的寄存器
 	var registor = this.registor = new Register(options.root+ '/.build');
 	//计算entry的id
 	console.log('Srcdir : ', options.srcdir, ' entry : ', entry);
-	var id = this.id = path.relative( fs.realpathSync(this.getopt('srcdir')), fs.realpathSync(entry) );
+	var id = this.id = path.relative( this.getopt('srcdir'), entry );
 	var ps = this.calpaths(id);
 };
 //取得配置
@@ -122,8 +122,8 @@ Bundle.prototype.anyModified = function(){
 Bundle.prototype.collect = function(force){
 	var self = this;
 	//传递给Segment用的函数
-	var resolver = function(cid, file, m){
-		return Resolver(cid, file, m, self.getopt('root'), self.getopt('src'), self.getopt('domains'));
+	var resolver = function(src, ref){
+		return Resolver( path.dirname(src), ref, self.getopt('srcdir'), self.getopt('domains'));
 	};
 	//针对这个pkg的寄存器
 	var registor = this.registor;
@@ -177,11 +177,20 @@ Bundle.prototype.collect = function(force){
 
 
 //打包一个文件
-//@param entry{path} 目标文件的完整路径/相对pkgroot的相对路径(不能以/号开头)
+//@param entry{path} 文件的访问路径,需要resolver解释解释一下;  目标文件的完整路径/相对pkgroot的相对路径(不能以/号开头)
 exports.bundle = function(entry, options, force){  //pkgroot执行工程根目录
 	if(!entry){
 		throw new Error('没指定入口文件');
 	}
+	//处理所有路径变成真实路径(展开符号链接)
+	options.root = fs.realpathSync(options.root);
+	console.log(' Entry ', entry);
+	if(entry.charAt(0) != '/'){
+		//解释出对应的入口文件完整路径
+		entry = Resolver( path.join(options.root, options.src), entry).src;
+	}
+	entry = fs.realpathSync(entry);
+	
 	var bundle = new Bundle(entry, options);
 	return bundle.bundle(force);
 };
@@ -202,7 +211,7 @@ var options = {
 	root: '/Users/Lijicheng/works/webpager.git/',  //pkg根目录
 	src: './src',
 	domains: { //管理代码的域
-		'shared': '../lib'  //基于src目录的相对路径
+		'shared': '../lib'  //基于src目录的相对路径, TODO: 需要支持自助查找
 	}
 };
 

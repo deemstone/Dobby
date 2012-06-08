@@ -81,7 +81,7 @@ Segment.prototype.extract = function (resolve, callback){
 			//TODO: 今后做到配置文件的dependencs列举
 			//包含::的是域功能,需要处理引用
 			if( m.indexOf('.') == 0 || m.indexOf('::') > 0){
-				m = resolve(this.id, this.src, m);
+				m = resolve(this.src, m);
 				//如果是::域引用,替换成模块id引用
 				if(m.domain){
 					codes.push( this.code.substr( codei , rs.index - codei ) );
