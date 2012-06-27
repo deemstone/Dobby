@@ -4,27 +4,36 @@
 var path = require('path');
 var fs = require('fs');
 
-//从当前目录按照指定ref引用,定位到那个模块
 //支持::形式的域解析
-//@param basedir{path} 当前所在完整路径
-//@param ref{string} 引用require()
 //@param srcdir{path} src目录完整路径
 //@param domains{k-v} 域声明
-var Resolver = function(basedir, ref, srcdir, domains){
+var Resolver = function(srcdir, domains, index){
+	this.srcdir = srcdir;
+	this.domains = domains;
+	this.index = index;  // 指定的是目录 找什么样的问题代替  index.js  index.incs
+}; 
+
+//从当前目录按照指定ref引用,定位到那个模块
+//@param basedir{path} 当前所在完整路径
+//@param ref{string} 引用require()
+Resolver.prototype.resolve = function(ref, basedir){
+console.log('resolveing .. ', ref);
 	var domain = null,  //::号前面的一个单词
 		//ref = m,  //引用字串  ../shared/jqtpl.js
 		id,  //被引用模块的统一标识  shared/jqtpl.js
 		src;  //基于pkg根的文件路径
-	srcdir = srcdir || basedir;  //如果没有指定srcdir,认为与basedir同目录
+	var srcdir = this.srcdir;
+	basedir = basedir || srcdir;  //如果没有指定basedir,认为与srcdir同目录
 
 	//处理域引用
 	var c;
 	if( (c = ref.indexOf('::')) > 0 ){
 		domain = ref.substr(0, c);  //域的名字
 		id = ref.replace('::', '/');  //这些模块id放在以domain名字命名的虚拟目录下
-		src = path.join( srcdir, domains[domain] , ref.replace( domain +'::', '') );  //这里src路径都是从源码src目录算起的
+		src = path.join( srcdir, this.domains[domain] , ref.replace( domain +'::', '') );  //这里src路径都是从源码src目录算起的
 		src += locate(src, 'index.js', 'js');
 		ref = path.relative( basedir, path.join(srcdir, id) );
+		
 	}else{
 		src = path.join( basedir , ref );
 		src += locate(src, 'index.js', 'js');
@@ -51,44 +60,6 @@ function locate(f, index, ext){
 		return r.test(f) ? '' : '.'+ext ;
 	}
 }
-
-// 当前模块的 id src 查询字串 m 包root src目录
-var Resolver0 = function(cid, file, m, root, sdir, domains){
-	//拼出路径,如果是目录,查找index.js
-	var cwd = path.dirname(file);  //当前模块文件所在目录的路径
-	var domain = null,  //::号前面的一个单词
-		ref = m,  //引用字串  ../shared/jqtpl.js
-		id,  //被引用模块的统一标识  shared/jqtpl.js
-		src;  //基于pkg根的文件路径
-
-	//处理域引用
-	var c;
-	if( (c = m.indexOf('::')) > 0 ){
-		domain = m.substr(0, c);  //域的名字
-		id = m.replace('::', '/'); //path.join(domain, m.substr(c+2));
-		//var root = path.join(  , );
-		ref = path.relative( path.dirname(cid), id );
-	}else{
-		src = path.join( path.dirname(file) , m );
-		c = locate(src, 'index.js', 'js');
-		src += c;
-		id = path.join( path.dirname(cid) , m ) + c;
-	}
-
-	//处理src
-	if(domain){
-	//console.log('domain', root, domains[domain], m.replace(/^[^:]+::/, ''));
-		src = path.join( root, sdir, domains[domain] , m.replace(/^[^:]+::/, '') );
-		src += locate(src, 'index.js', 'js');
-	}
-
-	return {
-		id: id,
-		src: src || id,
-		ref: ref,
-		domain: domain
-	};
-};
 
 module.exports = Resolver;
 
