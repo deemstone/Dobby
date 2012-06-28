@@ -98,7 +98,7 @@ Segment.prototype = {
 			codes.push( this.code.substr( codei ) );  //把剩下的一片代码截出来拼在后面
 			this.code = codes.join('');
 		}
-		callback(null, this.deps);
+		if(callback) callback(null, this.deps);
 	},
 	toJSON: function(){
 		return {

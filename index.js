@@ -16,7 +16,6 @@ var fs = require('fs');
 var Segment = require('./segment.js');
 var Resolver = require('./resolver.js');
 var Register = require('./register.js');
-var WatchFile = require('./watching.js').WatchFile;
 
 
 //负责生成和保存publist
@@ -114,7 +113,7 @@ BigMap.prototype = {
 	//查看源文件是否没有改动过,可以直接使用map中提供的寄存信息
 	//@param id{string} 只要提供节点的id,将会在map中查询所有依赖
 	//如果有效可用,返回
-	isUp2date: function(id, postfix){
+	isUp2date: function(id, incs){
 		//要确认每个incs中的segment寄存有效
 		//最后还要确认bundle的寄存比所有segment都新
 		//按照id在map中取出对应的节点
@@ -122,10 +121,11 @@ BigMap.prototype = {
 		if(!bundle) return false;
 		var entry = this.registor.isEffective(id, null, '.bundle');
 		if(!entry) return false;
+		incs = incs || bundle.incs;
 
 		var inc, reg, obj;
-		for(var i = 0; i < bundle.incs.length; i++){
-			inc = bundle.incs[i];
+		for(var i = 0; i < incs.length; i++){
+			inc = incs[i];
 			obj = this.fetch(inc); //确认每个inc的寄存有效
 			if( !obj || !(obj.output) ){  //对每个segment寄存确认比
 				return false;
@@ -148,15 +148,19 @@ BigMap.prototype = {
 //生成最终发布文件的通用对象
 //@param entry{string} 源模块id (index.js / index.cob)
 //@param options{project} 工程对应的project对象
-var Combine = function(entry, options){
+var Combine = function(entry, options, incs){
 	this.options = options;
 	this.id = entry;
+	this.incs = incs || null;
+	if(incs) this._combine = 1;  //标示自己是虚拟组合型combine
+
+	console.log(' Entry : ', entry)
 };
 
 Combine.prototype = {
 	//从entry开始计算需要打包的所有模块
 	//要兼容bigmap中的信息
-	collect: function(entry, force){
+	collect: function(force){
 		var self = this;
 
 		//过程信息
@@ -212,8 +216,8 @@ Combine.prototype = {
 			id = id.id;
 		}
 		//充分利用bigmap
-		var seg = this.getopt('bigmap').fetch(id);
-		if(!seg){
+		var seg;
+		if( force || !(seg = this.getopt('bigmap').fetch(id)) ){
 			//判断类型
 			var type = path.extname(id);
 			if(!type || type.length < 2){
@@ -230,9 +234,46 @@ Combine.prototype = {
 
 	//将收集的文件编译打包
 	bundle: function(force){
+		if(this._combine){
+			return this.bundle_virtual(force);
+		}else{
+			return this.bundle_commonjs(force);
+		}
+	},
+
+	//虚拟组合发布文件,用于优化请求数
+	bundle_virtual: function(force){
+		var self = this;
+		var segments = {};
+		var bigmap = this.getopt('bigmap');
+		var resolver = this.getopt('resolver');
+		var key;
+		//if( key = bigmap.isUp2date(this.id, this.incs) ){
+			//挨个创建列表中指定的segment
+			this.incs.forEach(function(inc){
+				var id = resolver.resolve(inc);
+				var seg = self.newSegment(id, force);
+				if( !seg.deps ){
+					seg.extractDeps();
+				}
+				segments[ inc ] = seg;
+			});
+			this.segments = segments;
+			this.linkup();
+			//防止覆盖有实体的bundle,不使用暂存
+			//bigmap.replace( this, 'bundle' );
+			//bigmap.save();
+			return this.output;
+		//}else{
+		//console.log(' Up to Date KEY: ', key);
+		//	return this.getopt('registor').fetch(key);
+		//}
+	},
+
+	//普通CommonJS模块依赖合并
+	bundle_commonjs: function(force){
 		var bigmap = this.getopt('bigmap');
 		var key;
-
 		if(force || !(key = bigmap.isUp2date(this.id)) ){
 			this.entry = this.newSegment(this.id, force);
 			//重新打包被改动过的模块
@@ -287,6 +328,7 @@ Combine.prototype = {
 		return this.options[key] || null;
 	}
 };
+
 //所有支持的Segment类型
 var segTypes = {
 	commonjs: Segment
@@ -313,7 +355,7 @@ var getProject = function(opts){
 	}
 };
 //@param request{path} 请求,publist中的某个文件,不带/开头是id, 带/开头是完整文件路径
-exports.bundle = function(request, options, force){
+exports.bundle = function(request, options, force, incs){
 	//这里,在调用Combine组件之前,将所有参数标准化
 	if(!request){
 		throw new Error('没指定入口文件');
@@ -323,18 +365,16 @@ exports.bundle = function(request, options, force){
 	//根据options指定的工程信息,加载相应配置
 	var pjt = getProject( options );
 
-	//如果是完整路径,计算对srcdir的相对路径
-	//if(request.charAt(0) != '/'){
-	//	request = path.relative(pjt.srcdir, request);
-	//}
+	if(incs){
+		var comeon = new Combine(request, pjt, incs);
+	}else{
+		//resolve得到entry id
+		var entry = pjt.resolver.resolve( request ).id;
+		// Oh, Come On !
+		var comeon = new Combine( entry , pjt );
+	}
 
-	//resolve得到entry id
-	var entry = pjt.resolver.resolve( request ).id;
 
-	console.log(' Entry : ', entry)
-
-	// Oh, Come On !
-	var comeon = new Combine( entry , pjt );
 	var output = comeon.bundle(force);
 	return output;
 };
@@ -409,7 +449,7 @@ if( require.main === module ){
 
 
 	var entry = path.relative( path.join( fs.realpathSync(options.root), options.src), fullpath );
-	var bundled = exports.bundle(entry, options);
+	var bundled = exports.bundle(entry, options, null, ['tpl::buddy/aBuddy.html.js', 'tpl::buddy/buddy_groups.html.js']);
 	fs.writeFileSync('/Users/Lijicheng/htdocs/xn.static/webpager/im.js', bundled);
 }
 
