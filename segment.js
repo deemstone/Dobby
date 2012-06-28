@@ -5,7 +5,7 @@ var fs = require('fs');
 var path = require('path');
 
 var RegExp_require = /require\(('|")(.*?)\1\)/g;
-var Split_string = '\nalert("Deps Info JSON above, Source Code below.")\n';
+//var Split_string = '\nalert("Deps Info JSON above, Source Code below.")\n';
 
 //Segment原型类
 var Segment = function(id, src){
@@ -15,11 +15,6 @@ var Segment = function(id, src){
 	this.deps = null;
 	this.output = null;
 	this.extname = '.js';
-
-	//查看是否已经有寄存内容
-	//加载相关数据
-	//提取依赖
-	//this.extractDeps();
 };
 Segment.prototype = {
 	//生成浏览器可运行的代码

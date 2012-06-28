@@ -145,6 +145,123 @@ BigMap.prototype = {
 	}
 };
 
+//Segment原型类
+var Combine_cjs = function(entry, src, options){
+	console.log('\nLinking : ', entry);
+	this.registor = options.registor;
+	this.resolver = options.resolver;
+	this.bigmap = options.bigmap;
+	this.id = entry;
+	this.src = src;
+	this.incs = null;
+	this.output = null;
+};
+Combine_cjs.prototype = {
+	//提取依赖
+	extractIncs: function(){
+		var resolver = this.resolver;
+		try{
+			var code = fs.readFileSync(this.src, 'utf8');
+			console.log(' Reading code ', code);
+		}catch(e){
+			return null;
+		}
+		//?? 同一个正则对象,交叉对多个字符串执行,会乱吗? 会的!
+		RegExp_include = /@include\s+('|")([^\n]+)\1\s*\n/g;  //归零
+
+		var uni = {}; //去重标志位
+		var incs = [];  //目标,依赖列表
+		var rs = null;
+		var codes = [];  //代码片段,为了支持替换
+		var codei = 0;  //标记上次替换截取到哪个字符
+		while( rs = RegExp_include.exec(code) ){
+		console.log(' RS : ', rs);
+		/*
+		 * [ 'require(\'../lib/base\')',
+		 * '\'',
+		 * '../lib/base',
+		 * index: 11,
+		 * input: '整个code字串' ]
+		 */
+			var m = rs[2];
+			var stat = rs[0];  //引用的生命语句
+			if(!uni[m]){
+				uni[m] = stat;
+				//暂时所有此工程模块的引用都用./ ../ 凡是不以.开头的依赖都视为系统内置模块 
+				//TODO: 今后做到配置文件的dependencs列举
+				//包含::的是域功能,需要处理引用
+				if( m.indexOf('.') == 0 || m.indexOf('::') > 0){
+					m = resolver.resolve( m, path.dirname(this.src) );
+					//如果是::域引用,替换成模块id引用
+					//if(m.domain){
+					//	codes.push( this.code.substr( codei , rs.index - codei ) );
+					//	codei = RegExp_require.lastIndex;
+					//	codes.push( 'require(\''+ m.ref +'\')' );
+					//}
+					////TODO: 临时滤掉tpl文件
+					//if(m.domain == 'tpl') continue;
+					incs.push( m );
+				}else{
+					incs.push({ref: m});  //没有src属性的依赖不会被处理
+				}
+			}
+			//把include引用语句删掉
+			codes.push( code.substr( codei , rs.index - codei ) );
+			codei = RegExp_include.lastIndex;
+		}
+		this.incs = incs;
+
+		if(codes.length){
+			codes.push( code.substr( codei ) );  //把剩下的一片代码截出来拼在后面
+			this.code = codes.join('');
+		}
+		return incs;
+	},
+	bundle: function(force){
+		var registor = this.registor;
+		var bigmap = this.bigmap;
+		var key;
+		if( !force && bigmap.bundles[ this.id ] && (key = registor.isEffective(this.id, this.src, '.bundle')) ){
+			var incs = bigmap.bundles[ this.id ].incs;
+			var inc, reg, obj;
+			for(var i = 0; i < incs.length; i++){
+				inc = incs[i];
+				reg = registor.isEffective(this.id, inc.src, '.bundle');
+				if(!reg){
+					key = false;
+					break;
+				}
+			}
+		}
+		//寄存有效,可用
+		if(key){
+			console.log('Sure is Up to date! ', key.key);
+			return registor.fetch( key.key );
+		}
+		//需要重新编译
+		var incs = this.extractIncs();
+		console.log(' Deps : ', incs);
+		var codes = [];
+		incs.forEach(function(dep){
+			console.log(' Reading component ', dep.src)
+			var code = fs.readFileSync(dep.src, 'utf8');
+			codes.push(code);
+		});
+		codes.push(this.code);
+		console.log( this.code, codes);
+		this.output = codes.join('\n');
+		this.bigmap.replace(this, 'bundle');
+		this.bigmap.save();
+		return this.output;
+	},
+	toJSON: function(){
+		return {
+			id: this.id,
+			src: this.src
+		};
+	}
+};
+
 //生成最终发布文件的通用对象
 //@param entry{string} 源模块id (index.js / index.cob)
 //@param options{project} 工程对应的project对象
@@ -329,10 +446,6 @@ Combine.prototype = {
 	}
 };
 
-//所有支持的Segment类型
-var segTypes = {
-	commonjs: Segment
-};
 //运行时存储所有工程相关资源
 var projects = {};
 //工程相关信息
@@ -369,11 +482,14 @@ exports.bundle = function(request, options, force, incs){
 		var comeon = new Combine(request, pjt, incs);
 	}else{
 		//resolve得到entry id
-		var entry = pjt.resolver.resolve( request ).id;
-		// Oh, Come On !
-		var comeon = new Combine( entry , pjt );
+		var entry = pjt.resolver.resolve( request );
+		if( /\.cjs$/.test(entry.src) ){  //Combine_cjs`
+			var comeon = new Combine_cjs( entry.id, entry.src, pjt);
+		}else{
+			// Oh, Come On !
+			var comeon = new Combine( entry.id , pjt );
+		}
 	}
-
 
 	var output = comeon.bundle(force);
 	return output;
@@ -449,7 +565,7 @@ if( require.main === module ){
 
 
 	var entry = path.relative( path.join( fs.realpathSync(options.root), options.src), fullpath );
-	var bundled = exports.bundle(entry, options, null, ['tpl::buddy/aBuddy.html.js', 'tpl::buddy/buddy_groups.html.js']);
+	var bundled = exports.bundle(entry, options); //, null, ['tpl::buddy/aBuddy.html.js', 'tpl::buddy/buddy_groups.html.js']);
 	fs.writeFileSync('/Users/Lijicheng/htdocs/xn.static/webpager/im.js', bundled);
 }
 
