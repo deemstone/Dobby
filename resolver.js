@@ -31,12 +31,12 @@ console.log('resolveing .. ', ref);
 		domain = ref.substr(0, c);  //域的名字
 		id = ref.replace('::', '/');  //这些模块id放在以domain名字命名的虚拟目录下
 		src = path.join( srcdir, this.domains[domain] , ref.replace( domain +'::', '') );  //这里src路径都是从源码src目录算起的
-		src += locate(src, 'index.js', 'js');
+		src = locate(src);
 		ref = path.relative( basedir, path.join(srcdir, id) );
 		
 	}else{
 		src = path.join( basedir , ref );
-		src += locate(src, 'index.js', 'js');
+		src = locate(src);
 		id = path.relative( srcdir , src );
 	}
 
@@ -48,12 +48,44 @@ console.log('resolveing .. ', ref);
 	};
 };
 
+// im.js -> im/index.js
+// channel.js -> channel/index.cjs
+function findIndex(d){
+	var indexs = ['index.js', 'index.cjs'];
+	for(var i = 0; i < indexs.length; i++){
+		file = path.join( d, indexs[i] );
+		if( path.existsSync(file) ){
+			return path.join(d, indexs[i]);
+		}
+	}
+	return path.join( d, indexs[0] );
+};
 //文件夹下默认使用index.js
-function locate(f, index, ext){
+function locate(f){
+	//首先判断该文件是否存在
+	if( path.existsSync(f) ){
+		//存在,并且是文件,直接返回f
+		if( fs.statSync(f).isFile() ){
+			return f;
+		}else{
+			return findIndex(f);
+		}
+	}else{
+		//不存在,尝试去掉.js的扩展名,判断是否是目录
+		if( /\.js$/.test(f) ){
+			var d = f.replace( /\.js$/, '');
+			if( path.existsSync(d) ){
+				return findIndex(d);
+			}
+		}else if(path.existsSync(f + '.js')){
+			return f+'.js';
+		}
+	}
+	return f;
+		//
 	if( path.existsSync(f) && fs.statSync(f).isDirectory() ){
 		//是个目录
-		//return path.join(f, index);
-		return '/'+ index;
+		var file;
 	}else{
 		//是文件,判断是否有扩展名
 		var r = RegExp( '\.'+ ext +'$');

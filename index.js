@@ -367,13 +367,13 @@ Combine.prototype = {
 		var key;
 		//if( key = bigmap.isUp2date(this.id, this.incs) ){
 			//挨个创建列表中指定的segment
-			this.incs.forEach(function(inc){
-				var id = resolver.resolve(inc);
+			this.incs.forEach(function(incid){
+				var id = resolver.resolve(incid);
 				var seg = self.newSegment(id, force);
 				if( !seg.deps ){
-					seg.extractDeps();
+					seg.extractDeps(resolver);
 				}
-				segments[ inc ] = seg;
+				segments[ incid ] = seg;
 			});
 			this.segments = segments;
 			this.linkup();
@@ -446,6 +446,33 @@ Combine.prototype = {
 	}
 };
 
+//bundle过程参数
+var options = {
+	prefix: 'webpager',  //所有模块命名的id前缀(objectjs中的域概念)
+	wrapper: 'objectjs',  //适配浏览器端环境
+	root: '/Users/Lijicheng/works/webpager.git/',  //pkg根目录
+	src: './src',
+	domains: { //管理代码的域
+		'shared': '../shared',  //基于src目录的相对路径
+		'tpl': '../tpl_build'
+	}
+};
+var virtuals = {
+	'buddy.tpl.js': [
+		'tpl::buddy/aBuddy.html',
+		'tpl::buddy/groups.html', 
+		'tpl::buddy/win.html', 
+		'tpl::buddy/lis.html', 
+		'tpl::buddy/friendListInner.html', 
+		'tpl::buddy/noResult.html'
+	],
+	'ugc-topics.js': [
+		'ugc/common', 
+		'ugc/photo',
+		'ugc/video'
+	]
+};
+
 //运行时存储所有工程相关资源
 var projects = {};
 //工程相关信息
@@ -468,7 +495,8 @@ var getProject = function(opts){
 	}
 };
 //@param request{path} 请求,publist中的某个文件,不带/开头是id, 带/开头是完整文件路径
-exports.bundle = function(request, options, force, incs){
+exports.bundle = function(request, options, force){
+	console.log(' Comming ... ', request);
 	//这里,在调用Combine组件之前,将所有参数标准化
 	if(!request){
 		throw new Error('没指定入口文件');
@@ -478,8 +506,8 @@ exports.bundle = function(request, options, force, incs){
 	//根据options指定的工程信息,加载相应配置
 	var pjt = getProject( options );
 
-	if(incs){
-		var comeon = new Combine(request, pjt, incs);
+	if( virtuals[request] ){
+		var comeon = new Combine(request, pjt, virtuals[request]);
 	}else{
 		//resolve得到entry id
 		var entry = pjt.resolver.resolve( request );
@@ -520,18 +548,6 @@ exports.build = function(options, target){
 //exports.bundle = function(entry, options, force){  //pkgroot执行工程根目录
 //};
 
-
-//bundle过程参数
-var options = {
-	prefix: 'webpager',  //所有模块命名的id前缀(objectjs中的域概念)
-	wrapper: 'objectjs',  //适配浏览器端环境
-	root: '/Users/Lijicheng/works/webpager.git/',  //pkg根目录
-	src: './src',
-	domains: { //管理代码的域
-		'shared': '../shared',  //基于src目录的相对路径
-		'tpl': '../tpl_build'
-	}
-};
 
 //发布文件列表
 var publist = [

@@ -39,9 +39,10 @@ Segment.prototype = {
 	//提取依赖
 	extractDeps: function(resolver, callback){
 		try{
+		console.log(' Reading src : ', this.src);
 			this.code = fs.readFileSync(this.src, 'utf8');
 		}catch(e){
-			callback({
+			if(callback) callback({
 				msg: 'Cant load module file : '+ this.id +' => '+ this.src,
 				err: e
 			});
@@ -79,8 +80,11 @@ Segment.prototype = {
 						codes.push( 'require(\''+ m.ref +'\')' );
 					}
 					//TODO: 临时滤掉tpl文件
-					if(m.domain == 'tpl') continue;
-					deps.push( m );
+					if(m.domain == 'tpl'){
+						deps.push({ref: m.ref});
+					}else{
+						deps.push( m );
+					}
 				}else{
 					deps.push({ref: m});  //没有src属性的依赖不会被处理
 				}
