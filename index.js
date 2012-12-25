@@ -22,7 +22,7 @@ var Register = require('./register.js');
 //记录所有bundles列表
 //维护所有依赖关系树各节点的详细信息
 //提供判断某节点寄存是否失效的方法
-//TODO: 第一个版本的BigMap暂时只做Registor的一层便利封装,不提供树节点智能判断的功能
+//TODO: 第一个版本的BigMap暂时只做Register的一层便利封装,不提供树节点智能判断的功能
 //基于文件mtime时间判断
 var BigMap = function(registor){
 	var self = this;
@@ -392,6 +392,7 @@ Combine.prototype = {
 		var bigmap = this.getopt('bigmap');
 		var key;
 		if(force || !(key = bigmap.isUp2date(this.id)) ){
+			force = true;  //只要有一个模块被更改了,全部强制重新编译(为了重新计算依赖信息)
 			this.entry = this.newSegment(this.id, force);
 			//重新打包被改动过的模块
 			var errors = this.collect(force);
@@ -457,43 +458,7 @@ var options = {
 		'tpl': '../tpl_build'
 	}
 };
-var virtuals = {
-	'buddy.tpl.js': [
-		'tpl::buddy/aBuddy.html',
-		'tpl::buddy/groups.html', 
-		'tpl::buddy/win.html', 
-		'tpl::buddy/lis.html', 
-		'tpl::buddy/friendListInner.html', 
-		'tpl::buddy/noResult.html'
-	],
-	'ugc-topics.js': [
-		'ugc/common', 
-		'ugc/photo',
-		'ugc/video'
-	]
-};
 
-//运行时存储所有工程相关资源
-var projects = {};
-//工程相关信息
-var Project = function(opts){
-	this.srcdir = path.join( opts.root, opts.src );
-	var registor = this.registor = new Register(opts.root);
-	this.bigmap = new BigMap(registor);
-	this.resolver = new Resolver(this.srcdir, opts.domains, ['index.js']);
-	//var publist = 
-};
-var getProject = function(opts){
-	var pj;
-	if( pj = projects[opts.root] ){
-		return pj;
-	}else{
-		//计算和准备相关资源
-		pj = new Project(opts);
-		projects[opts.root] = pj;
-		return pj;
-	}
-};
 //@param request{path} 请求,publist中的某个文件,不带/开头是id, 带/开头是完整文件路径
 exports.bundle = function(request, options, force){
 	console.log(' Comming ... ', request);
@@ -531,13 +496,6 @@ exports.build = function(options, target){
 	//按列表指定,挨个创建bundle,发布文件到target
 };
 
-//由pages的引用生成发布文件列表
-//exports.mapout = function(){
-//	
-//};
-
-
-
 //打包一个文件
 //@param entry{path} 文件的访问路径,需要resolver解释解释一下;  目标文件的完整路径/相对pkgroot的相对路径(不能以/号开头)
 //
@@ -548,50 +506,6 @@ exports.build = function(options, target){
 //exports.bundle = function(entry, options, force){  //pkgroot执行工程根目录
 //};
 
-
-//发布文件列表
-var publist = [
-	{
-		path: 'im.js'   //默认是CommonJS模块打包
-		//对tpl的引用暂时忽略不打包
-	},
-	{
-		path: 'channel.js',
-	},
-	{
-		path: 'ugc-topics.js',
-		include: ['ugc/common', 'ugc/photo', 'ugc/video']
-	},
-	{
-		path: 'buddy.tpl.js',
-		include: ['tpl::buddy_win', 'tpl::buddy_groups', 'tpl::aBuddy', 'tpl::buddyLis', 'tpl::noResult' ]
-	}
-];
-
-//如果是直接运行的,接收命令行参数
-if( require.main === module ){
-	var argv = process.argv;
-	var fullpath = fs.realpathSync(path.resolve( argv[2] ));
-	//var output = argv[3];
-
-	if( !path.existsSync( fullpath ) ){
-		console.log('指定入口文件不存在');
-		process.exit(1);
-	}
-
-
-	var entry = path.relative( path.join( fs.realpathSync(options.root), options.src), fullpath );
-	var bundled = exports.bundle(entry, options); //, null, ['tpl::buddy/aBuddy.html.js', 'tpl::buddy/buddy_groups.html.js']);
-	fs.writeFileSync('/Users/Lijicheng/htdocs/xn.static/webpager/im.js', bundled);
-}
-
-
-//var pkg = findRoot(fullpath);
-//if(!pkg){
-//	console.log('在指定路径中没找到publist');
-//	process.exit(1);
-//}
-//console.log('PKG: ', pkg);
 
 //var tool_root = __dirname;  //被执行的这个脚本所在目录
 

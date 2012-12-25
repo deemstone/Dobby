@@ -13,11 +13,17 @@ var path = require('path');
 //把root目录开辟成一块寄存区
 var Register = function(root) {
 	if (!path.existsSync(root)) {
-		throw new Error('Pkg root directory not exist!');
+		throw new Error('Pkg root directory not exist! '+ root);
 	}
-	this.dir = path.join(root, '.build'); //path.join(root, BuildDIR);
+	//this.dir = path.join(root, '.build'); //path.join(root, BuildDIR);
+	this.dir = root;
 };
 
+//return regfile = 
+//{
+//	info: {},
+//	content: string...
+//}
 //设置某个寄存文件的内容
 Register.prototype.replace = function(key, content, postfix, extname){
 	if(postfix){
@@ -113,7 +119,6 @@ function overwrite(filepath, content){
 
 module.exports = Register;
 
-
 //监视文件改动
 //根据查询时间/传入的时间 判断指定的文件是否有改动
 //监视所有被关注文件的改动
@@ -165,3 +170,5 @@ var WatchFiles = exports.WatchFiles = {
 		});
 	}
 };
+
+

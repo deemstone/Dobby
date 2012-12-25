@@ -1,12 +1,22 @@
 /*
  * 模块封装类
  */
-var fs = require('fs');
-var path = require('path');
+
+var Segment = function(statement, code){
+	this.name = 'friendbook.tmplate#abuddy.jqtpl';  //identify a uniq segment in a project, also used as id regsiter.
+	this.workflow = ['less', ''];  //从源代码到编译结果,需要经过的流程, 顺序调用workman处理代码
+	this.workstatement = '#segmentname.tmp workman:inline,...';  //可以在segment声明行中指定一些附加的workman,这些workman会在扩展名(extname)关联的workman处理之后被调用
+	this.code = code;
+};
+
+Segment.prototype = {
+	compile: function(){
+	
+	}
+};
+
 
 var RegExp_require = /require\(('|")(.*?)\1\)/g;
-//var Split_string = '\nalert("Deps Info JSON above, Source Code below.")\n';
-
 //Segment原型类
 var Segment = function(id, src){
 	console.log('\nParsing : ', id);

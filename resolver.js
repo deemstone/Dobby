@@ -9,15 +9,15 @@ var fs = require('fs');
 //@param domains{k-v} 域声明
 var Resolver = function(srcdir, domains, index){
 	this.srcdir = srcdir;
-	this.domains = domains;
-	this.index = index;  // 指定的是目录 找什么样的问题代替  index.js  index.incs
+	this.domains = domains || {};
+	this.index = index || [];  // 指定的是目录 找什么样的问题代替  index.js  index.incs
 }; 
 
 //从当前目录按照指定ref引用,定位到那个模块
 //@param basedir{path} 当前所在完整路径
 //@param ref{string} 引用require()
 Resolver.prototype.resolve = function(ref, basedir){
-console.log('resolveing .. ', ref);
+console.log3('resolveing .. ', ref);
 	var domain = null,  //::号前面的一个单词
 		//ref = m,  //引用字串  ../shared/jqtpl.js
 		id,  //被引用模块的统一标识  shared/jqtpl.js
