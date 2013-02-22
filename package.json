@@ -1,0 +1,36 @@
+{
+  "name": "dobby",
+  "description": "Web frontend project manage tool. With this tool, make js code cleaner！",
+  "keywords": [
+    "web develop",
+    "frontend project manage tool",
+    "build and publish js"
+  ],
+  "version": "0.1.1",
+  "homepage": "http://git://github.com/deemstone/Dobby",
+  "author": "Deemstone Li <deemstone@gmail.com> (http://blog.cooer.net)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/deemstone/Dobby.git"
+  },
+  "bugs": {
+    "email": "deemstone@gmail.com",
+    "url": "http://github.com/deemstone/Dobby/issues"
+  },
+  "directories": {
+    "doc": "./doc",
+	"test": "./test"
+  },
+  "bin": "./watcher.js",
+  "dependencies": {
+  },
+  "devDependencies": {
+	  "mocha": ""
+  },
+  "engines": {
+    "node": "0.6 || 0.7 || 0.8"
+  },
+  "scripts": {
+    "test": "mocha ./test"
+  }
+}
