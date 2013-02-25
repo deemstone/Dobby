@@ -11,13 +11,14 @@ var exec = require('child_process').exec;
 var fsx = require('fs-extra');
 
 //用命令行第一个参数指定工程目录
-var project_path = (__filename == process.argv[1]) ? process.argv[2] : process.argv[1];  //如果直接node watcher.js方式运行的argv[0]是node
+//console.log(__filename, process.argv, process.env);
+var project_path = process.argv[2];  //argv[0]是node
 //project_path = path.resolve(__dirname, project_path);//
 
 var project_config;
 //读取工程下的wc.json配置文件
 try{
-	project_config = require(project_path +'/wc.json');	
+	project_config = require( path.resolve(project_path +'/wc.json') );	 //由于require寻址方式，这里需要提供完整路径，resolve一下
 }catch(e){
 	console.error('\n貌似你的工程下wc.json配置文件有问题... ~_- \n');
 	console.error(e.stack);

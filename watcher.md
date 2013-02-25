@@ -13,7 +13,7 @@ Dobby终极目标：
 本期功能设计：
 -----------
 
-命令行程序，在终端运行，指定js工程目录，读取配置文件监视文件改动自动发布到build目录。
+命令行程序，在终端运行，指定js工程目录，读取配置文件监视文件改动自动copy到指定目录。
 
 ```
 $ dobby /path/to/project
@@ -39,3 +39,7 @@ $ dobby /path/to/project
 2. git checkout wc
 3. npm install -g
 4. 可以使用dobby命令了
+
+细节：
+
+目前watcher的实现，使用fs.watch这个接口，文件的任何改动都会检测到，即使是没有任何改动单纯的cmd+s保存也会触发copy。
