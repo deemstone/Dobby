@@ -23,6 +23,7 @@
   },
   "bin": "./watcher.js",
   "dependencies": {
+	  "fs-extra": "0.5.x"
   },
   "devDependencies": {
 	  "mocha": ""
